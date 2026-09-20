@@ -1,0 +1,15 @@
+#airp_ledger_memory_settings .alm-grid { display: grid; grid-template-columns: minmax(8rem, 1fr) 2fr; gap: .55rem .75rem; align-items: center; }
+#airp_ledger_memory_settings .alm-status { margin: .6rem 0; padding: .55rem; border: 1px solid var(--SmartThemeBorderColor); border-radius: 6px; }
+#airp_ledger_memory_settings .alm-actions, .alm-actions, .alm-tabs { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .55rem; }
+.alm-dialog { width: min(900px, 94vw); height: min(780px, 90vh); color: var(--SmartThemeBodyColor); background: var(--SmartThemeBlurTintColor); border: 1px solid var(--SmartThemeBorderColor); border-radius: 10px; }
+.alm-dialog::backdrop { background: rgba(0,0,0,.62); }
+.alm-dialog-head { display: flex; justify-content: space-between; align-items: center; }
+.alm-manager-body { overflow: auto; height: calc(100% - 9rem); margin-top: .6rem; }
+.alm-card { padding: .7rem; margin: .55rem 0; border: 1px solid var(--SmartThemeBorderColor); border-radius: 7px; background: rgba(0,0,0,.12); }
+.alm-card.is-locked { border-color: #d6a93b; }
+.alm-card-title { display: flex; justify-content: space-between; gap: 1rem; font-weight: 700; }
+.alm-object { margin: .45rem 0; white-space: pre-wrap; }
+.alm-meta, .alm-evidence { opacity: .75; font-size: .88em; }
+.alm-source-text { margin-top: .4rem; max-height: 9rem; overflow: auto; white-space: pre-wrap; }
+.alm-tab.active { outline: 2px solid var(--SmartThemeQuoteColor); }
+.alm-empty { opacity: .7; text-align: center; padding: 2rem; }

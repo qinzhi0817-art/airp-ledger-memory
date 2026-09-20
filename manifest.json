@@ -1,0 +1,12 @@
+{
+  "display_name": "AIRP Ledger Memory",
+  "loading_order": 120,
+  "requires": [],
+  "optional": ["connection-manager"],
+  "generate_interceptor": "airp_ledger_memory_intercept",
+  "js": "index.js",
+  "css": "style.css",
+  "author": "Codex",
+  "version": "0.1.0",
+  "homePage": "https://github.com/your-name/airp-ledger-memory"
+}

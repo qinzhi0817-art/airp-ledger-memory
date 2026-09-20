@@ -1,0 +1,26 @@
+<div id="airp_ledger_memory_settings" class="extension_container">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>AIRP Ledger Memory</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <label class="checkbox_label"><input id="alm_enabled" type="checkbox"><span>启用记忆</span></label>
+            <div class="alm-grid">
+                <label for="alm_profile">专用 Connection Profile</label><select id="alm_profile" class="text_pole"></select>
+                <label for="alm_max_facts">每轮最多事实</label><input id="alm_max_facts" class="text_pole" type="number" min="1" max="8">
+                <label for="alm_injected_facts">最多注入事实</label><input id="alm_injected_facts" class="text_pole" type="number" min="1" max="12">
+                <label for="alm_injected_chars">注入字符预算</label><input id="alm_injected_chars" class="text_pole" type="number" min="500" max="12000" step="100">
+                <label for="alm_growth_threshold">成长证据阈值</label><input id="alm_growth_threshold" class="text_pole" type="number" min="2" max="8">
+            </div>
+            <div id="alm_status" class="alm-status">尚未加载聊天。</div>
+            <div class="alm-actions">
+                <button id="alm_test" type="button" class="menu_button">测试专用 API</button>
+                <button id="alm_extract_now" type="button" class="menu_button">提取当前最后一轮</button>
+                <button id="alm_manage" type="button" class="menu_button">管理记忆</button>
+                <button id="alm_export" type="button" class="menu_button">导出 JSON</button>
+            </div>
+            <small>后台请求不使用当前 AIRP 主模型。被丢弃的 swipe 默认在下一条用户消息出现前不会被确认。</small>
+        </div>
+    </div>
+</div>
