@@ -7,6 +7,9 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Codex",
-  "version": "0.1.0",
-  "homePage": "https://github.com/your-name/airp-ledger-memory"
+  "version": "0.1.1",
+  "homePage": "https://github.com/qinzhi0817-art/airp-ledger-memory",
+  "hooks": {
+    "activate": "init"
+  }
 }

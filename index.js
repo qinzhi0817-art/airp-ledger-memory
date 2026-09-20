@@ -8,7 +8,6 @@ import {
     setExtensionPrompt,
 } from '../../../../script.js';
 import { getContext } from '../../../st-context.js';
-import { ConnectionManagerRequestService } from '../../shared.js';
 import { DEFAULT_SETTINGS, EXTENSION_KEY, PROMPT_KEY } from './core/constants.js';
 import { extractTurn } from './core/extractor.js';
 import { deriveCharacterStates } from './core/growth.js';
@@ -20,8 +19,25 @@ import { ensureManager, openManager } from './ui/manager.js';
 
 const EXTENSION_FOLDER = 'third-party/airp-ledger-memory';
 let initialized = false;
+let eventsBound = false;
 let activeScopeId = '';
 let extractionQueue = Promise.resolve();
+let connectionService = null;
+
+console.info('[AIRP Ledger Memory] index module loaded (v0.1.1)');
+
+async function getConnectionService() {
+    if (connectionService) return connectionService;
+    try {
+        const module = await import('../../shared.js');
+        connectionService = module.ConnectionManagerRequestService;
+    } catch (error) {
+        console.warn('[AIRP Ledger Memory] Connection Manager service import failed:', error);
+        connectionService = getContext()?.ConnectionManagerRequestService || null;
+    }
+    if (!connectionService) throw new Error('当前 SillyTavern 未提供 ConnectionManagerRequestService。请更新 ST release 分支。');
+    return connectionService;
+}
 
 function settings() {
     extension_settings[EXTENSION_KEY] = { ...DEFAULT_SETTINGS, ...(extension_settings[EXTENSION_KEY] || {}) };
@@ -94,13 +110,14 @@ async function processTurn(turn, scopeId, manual = false) {
     const key = turnKey(turn);
     const ledger = await loadLedger(scopeId);
     if (ledger.lastProcessedTurn === key) return { skipped: true };
+    const requestService = await getConnectionService();
     const validated = await extractTurn({
         messages: turn,
         activeStates: activeStateHints(ledger),
         profileId: config.profileId,
         maxTokens: config.extractionMaxTokens,
         temperature: config.extractionTemperature,
-        requestService: ConnectionManagerRequestService,
+        requestService,
         maxFacts: config.maxFactsPerTurn,
     });
     if (getScopeId() !== scopeId && !manual) return { skipped: true };
@@ -170,7 +187,7 @@ function updateSetting(key, value) {
     saveSettingsDebounced();
 }
 
-function bindUi() {
+async function bindUi() {
     const config = settings();
     $('#alm_enabled').prop('checked', config.enabled).off('change').on('change', function () {
         updateSetting('enabled', Boolean($(this).prop('checked')));
@@ -189,7 +206,8 @@ function bindUi() {
         });
     }
     try {
-        ConnectionManagerRequestService.handleDropdown('#alm_profile', config.profileId, profile => {
+        const requestService = await getConnectionService();
+        requestService.handleDropdown('#alm_profile', config.profileId, profile => {
             updateSetting('profileId', profile?.id || '');
         });
     } catch (error) {
@@ -199,7 +217,8 @@ function bindUi() {
     $('#alm_test').off('click').on('click', async () => {
         try {
             if (!settings().profileId) throw new Error('请先选择专用 Connection Profile。');
-            await ConnectionManagerRequestService.sendRequest(
+            const requestService = await getConnectionService();
+            await requestService.sendRequest(
                 settings().profileId,
                 [{ role: 'system', content: 'Reply with exactly OK.' }, { role: 'user', content: 'Connection test.' }],
                 8,
@@ -232,6 +251,8 @@ function bindUi() {
 }
 
 function bindEvents() {
+    if (eventsBound) return;
+    eventsBound = true;
     if (event_types.MESSAGE_SENT) eventSource.on(event_types.MESSAGE_SENT, queueConfirmedTurn);
     eventSource.on(event_types.CHAT_CHANGED, async () => {
         activeScopeId = getScopeId();
@@ -240,28 +261,79 @@ function bindEvents() {
     });
 }
 
-export async function init() {
-    if (initialized) return;
-    initialized = true;
-    settings();
-    if (!document.getElementById('airp_ledger_memory_settings')) {
-        const html = await renderExtensionTemplateAsync(EXTENSION_FOLDER, 'settings');
-        $('#extensions_settings').append(html);
+async function waitForSettingsContainer(timeoutMs = 10000) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+        const container = document.querySelector('#extensions_settings2') || document.querySelector('#extensions_settings');
+        if (container) return container;
+        await new Promise(resolve => setTimeout(resolve, 100));
     }
-    activeScopeId = getScopeId();
-    const ledger = await loadLedger(activeScopeId);
+    throw new Error('找不到 SillyTavern 扩展设置容器（#extensions_settings2 / #extensions_settings）。');
+}
+
+async function mountSettingsPanel() {
+    if (document.getElementById('airp_ledger_memory_settings')) return;
+    const container = await waitForSettingsContainer();
+    let html = '';
+    try {
+        html = await renderExtensionTemplateAsync(EXTENSION_FOLDER, 'settings');
+    } catch (error) {
+        console.warn('[AIRP Ledger Memory] Template renderer failed, using relative fetch:', error);
+    }
+    if (!String(html || '').includes('airp_ledger_memory_settings')) {
+        const response = await fetch(new URL('./settings.html', import.meta.url));
+        if (!response.ok) throw new Error(`settings.html 加载失败：HTTP ${response.status}`);
+        html = await response.text();
+    }
+    container.insertAdjacentHTML('beforeend', html);
+    if (!document.getElementById('airp_ledger_memory_settings')) throw new Error('设置模板已读取，但没有成功插入 DOM。');
+    console.info('[AIRP Ledger Memory] settings panel mounted');
+}
+
+function showBootstrapError(error) {
+    console.error('[AIRP Ledger Memory] initialization failed:', error);
+    const target = document.getElementById('alm_status');
+    if (target) target.textContent = `初始化错误：${error.message}`;
+    notify('error', `初始化失败：${error.message}`);
+}
+
+export async function init() {
+    if (initialized && document.getElementById('airp_ledger_memory_settings')) return;
+    settings();
+    await mountSettingsPanel();
+    initialized = true;
+    await bindUi();
+    bindEvents();
     ensureManager(async updated => {
         await saveLedger(getScopeId(), updated);
         updateStatus(updated);
     });
-    bindUi();
-    bindEvents();
-    updateStatus(ledger);
-    globalThis.AirpLedgerMemory = { extractLatestNow, getLedger: () => peekLedger(getScopeId()), openManager: () => openManager(peekLedger(getScopeId()), settings()) };
+    try {
+        activeScopeId = getScopeId();
+        const ledger = await loadLedger(activeScopeId);
+        updateStatus(ledger);
+    } catch (error) {
+        updateStatus(peekLedger(activeScopeId), 0, `存储初始化失败：${error.message}`);
+        console.warn('[AIRP Ledger Memory] Storage initialization failed:', error);
+    }
+    globalThis.AirpLedgerMemory = {
+        init,
+        extractLatestNow,
+        getLedger: () => peekLedger(getScopeId()),
+        openManager: () => openManager(peekLedger(getScopeId()), settings()),
+    };
+    console.info('[AIRP Ledger Memory] initialization complete');
 }
 
 if (typeof window !== 'undefined') {
     window.airp_ledger_memory_intercept = (...args) => runGenerationInterceptor(...args);
 }
 
-jQuery(async () => init());
+function bootstrap() {
+    init().catch(showBootstrapError);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrap, { once: true });
+else queueMicrotask(bootstrap);
+
+if (event_types.APP_READY) eventSource.once(event_types.APP_READY, bootstrap);
