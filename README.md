@@ -1,6 +1,6 @@
 # AIRP Ledger Memory
 
-当前版本：`0.1.1`
+当前版本：`0.1.2`
 
 一个面向 SillyTavern 长篇 1 对 1 AIRP 的事实型长期记忆扩展。它把历史保存为不可变事实账本，使用独立的便宜模型提取，并在生成前以固定预算召回少量相关证据。
 
@@ -63,7 +63,7 @@ SillyTavern/public/scripts/extensions/third-party/airp-ledger-memory
 刷新后应在扩展设置中看到 “AIRP Ledger Memory” 折叠栏。浏览器控制台会依次输出：
 
 ```text
-[AIRP Ledger Memory] index module loaded (v0.1.1)
+[AIRP Ledger Memory] index module loaded (v0.1.2)
 [AIRP Ledger Memory] settings panel mounted
 [AIRP Ledger Memory] initialization complete
 ```
